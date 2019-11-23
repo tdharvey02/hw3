@@ -1,0 +1,214 @@
+#### Tyler D. Harvey 
+#### Computational Statistics 
+<center> Homework 3 </center>
+
+### Question 1 
+* Python Code
+```{r setup, include=FALSE}
+#Set up communication with Python #
+library(reticulate)
+use_python("/Users/tylerharvey/opt/anaconda3/bin/python")
+```
+
+```{python, engine.path= '/Users/tylerharvey/opt/anaconda3/bin/python'}
+#Import necessary modules# 
+from sklearn.datasets import make_regression
+import numpy as np
+
+#Create ridge regression function # 
+def lm_ridge(X, y, coefficients): 
+    alpha = 1
+    n, m = X.shape
+    I = np.identity(m)
+    beta_coef = np.dot(np.dot(np.linalg.inv(np.dot(X.T, X) + alpha * I), X.T), y)
+    return(beta_coef)
+
+# Generate random data#
+X, y, coefficients = make_regression(
+    n_samples=50,
+    n_features=1,
+    n_informative=1,
+    n_targets=1,
+    noise=5,
+    coef=True,
+    random_state=1
+)
+
+#Run function with random data# 
+lm_ridge(X,y,coefficients)
+
+```
+
+* I translated the function I designed for Homework 2 into Python and then tested it with random data to get the expected lambda. The inputs are: X, an input matrix with each row being an observation vector, y, the response variable, and lambda, the number of lambda values or specific lambda value at which to run the ridge regression in which act as penalty terms for model. 
+
+### Question 2 
+* Python Code
+```{python, engine.path= '/Users/tylerharvey/opt/anaconda3/bin/python'}
+#Import necessary modules# 
+import numpy as np
+import sklearn
+from sklearn.datasets import make_regression
+
+#Run ridge# 
+def ridge_regression(X, y, alpha, lambdaval):
+    ols_term = np.linalg.norm(np.dot(X, lambdaval) - y)
+    regularization = np.linalg.norm(alpha * lambdaval)
+    return ols_term + regularization
+
+#Find best fit# 
+def find_best_fit():
+    X = np.matrix(...)
+    y = np.matrix(...)
+
+    alpha = 3.0
+
+    min_error = float("inf")
+    min_x = np.zeros(...)
+
+    for i in range(1000):
+        lambdaval = np.random.rand(...)
+
+        error = ridge_regression(X, y, alpha, lambdaval)
+        if error < min_error:
+            min_error = error
+            min_lambdaval = lambdaval
+
+    return min_lambdaval
+
+# Generate random data#
+X, y, coefficients = make_regression(
+    n_samples=50,
+    n_features=1,
+    n_informative=1,
+    n_targets=1,
+    noise=5,
+    coef=True,
+    random_state=1
+)
+
+#Run function with random data# 
+ridge_regression(X, y, 1, 1)
+```
+* This question addresses producing an optimal lambda through cross validation associated with the lowest mean square error. The function is tested with randomly generated data. 
+
+### Question 3 
+*  Python Code
+```{python, engine.path= '/Users/tylerharvey/opt/anaconda3/bin/python'}
+#Import necessary modules# 
+import numpy as np
+from sklearn import datasets
+
+# Load diabetes dataset#
+diabetes = datasets.load_diabetes()
+X = diabetes.data
+y = diabetes.target.reshape(-1,1)
+
+#Start with soft threshold function # 
+def soft_threshold(rho,lamda):
+    if rho < - lamda:
+        return (rho + lamda)
+    elif rho >  lamda:
+        return (rho - lamda)
+    else: 
+        return 0
+#Update with coordinate descent # 
+def coordinate_descent_lasso(theta,X,y,lamda = .01, num_iters=100, intercept = False):
+    m,n = X.shape
+    X = X / (np.linalg.norm(X,axis = 0)) 
+    for i in range(num_iters): 
+        for j in range(n):
+            X_j = X[:,j].reshape(-1,1)
+            y_pred = X @ theta
+            rho = X_j.T @ (y - y_pred  + theta[j]*X_j)
+            if intercept == True:  
+                if j == 0: 
+                    theta[j] =  rho 
+                else:
+                    theta[j] =  soft_threshold(rho, lamda)  
+
+            if intercept == False:
+                theta[j] =  soft_threshold(rho, lamda)   
+            
+    return theta.flatten()
+
+#Run function with diabetes data# 
+m,n = X.shape
+initial_theta = np.ones((n,1))
+theta_list = list()
+lamda = np.logspace(0,4,300)/10
+for l in lamda:
+    theta = coordinate_descent_lasso(initial_theta,X,y,lamda = l, num_iters=100)
+    theta_list.append(theta)
+
+theta_lasso = np.stack(theta_list).T
+
+print(theta_lasso)
+```
+
+*Casl_lenet with random data 
+```{r}
+#Load casl#
+library(casl)
+
+#Generate random data #
+n<- 1000
+p<-5000
+X<-matrix(rnorm(n*p), ncol=p)
+beta  <- c(3,2,1, rep(0, p-3))
+y<- X%*% beta + rnorm(n=n, sd=0.1)
+
+#Run LASSO# 
+bhat <- casl_lenet(X, y, lambda=2, alpha =0.5)
+names(bhat)  <- paste0("v", seq_len(n))
+bhat[bhat!=0]
+```
+
+* This function reproduces a LASSO regressio to produce an optimal theta value based on the Pima Indian Diabetes dataset. You can also see above the casl_lenet function with random data, which outputs a matrix with different values that the LASSO above it (because they use different data sets) but are similar in nature. 
+
+### Question 4 
+```{python, engine.path= '/Users/tylerharvey/opt/anaconda3/bin/python'}
+#Import necessary modules# 
+import os
+import pandas as pd
+import numpy as np
+from sklearn import linear_model
+
+#Set directory and load in data#
+os.chdir("/Users/tylerharvey/homework3")
+iterx = pd.read_excel("iterx.xlsx")
+itery = pd.read_excel("itery.xlsx")
+
+#Run out of core implementation# 
+n_samples, n_features = (len(itery), len(iterx))
+rng = np.random.RandomState(0)
+y = rng.randn(n_samples)
+X = rng.randn(n_samples, n_features)
+linfit = linear_model.SGDRegressor(max_iter=1000, tol=1e-2)
+print(linfit.fit(X, y))
+print (linfit.intercept_, linfit.coef_)
+```
+* This function implements an out-of-core implementation using the SGDRegressor and iris data as providede by Michael Kane's github.The linear model that reads in contiguous rows of a data frame from a file, updates the model, and then moves on to the next set of contiguous rows.
+
+##### Citations
+
+Developed together in collaboration with Moid Ali and Diana Estfenia Estrada Alamo with support from R Tutors, Chang Su and Professor Michael Kane's course materials at Yale School of Public Health.
+
+NumPy for R (and S-Plus) users – Mathesaurus. (n.d.). Retrieved November 22, 2019, from http://mathesaurus.sourceforge.net/r-numpy.html
+
+BIS557/bis557-2019. (n.d.). Retrieved November 22, 2019, from GitHub website: https://github.com/BIS557/bis557-2019
+
+Lasso regression: Implementation of coordinate descent—Data Blog. (n.d.). Retrieved November 22, 2019, from https://xavierbourretsicotte.github.io/lasso_implementation.html
+
+Pandas-cheat-sheet.pdf. (n.d.). Retrieved from https://s3.amazonaws.com/dq-blog-files/pandas-cheat-sheet.pdf
+
+Numerical Analysis & Statistics: MATLAB, R, NumPy, Julia—Hyperpolyglot. (n.d.). Retrieved November 22, 2019, from http://hyperpolyglot.org/numerical-analysis2
+
+Peixeiro, M. (2019, January 14). How to Perform Lasso and Ridge Regression in Python. Retrieved November 22, 2019, from Medium website: https://towardsdatascience.com/how-to-perform-lasso-and-ridge-regression-in-python-3b3b75541ad8
+
+Ridge Regression | Brilliant Math & Science Wiki. (n.d.). Retrieved November 22, 2019, from https://brilliant.org/wiki/ridge-regression/
+
+Scikit-learn Tutorial: Machine Learning in Python – Dataquest. (n.d.). Retrieved November 22, 2019, from https://www.dataquest.io/blog/sci-kit-learn-tutorial/
+
+amoretti86. (2014, August 30). Regularized Regression: Ridge in Python Part 2 (Analytical Solution). Retrieved from https://statcatinthehat.wordpress.com/2014/07/16/regularized-regression-ridge-in-python-part-2/.
+
+Scikit-learn/scikit-learn. (n.d.). Retrieved November 22, 2019, from GitHub website: https://github.com/scikit-learn/scikit-learn
